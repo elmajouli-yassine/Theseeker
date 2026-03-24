@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TheSeeker — OSINT Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060a0e;
+    --bg2: #0a1018;
+    --bg3: #0d1520;
+    --card: #0e1a28;
+    --card2: #0c1520;
+    --border: rgba(0,220,130,0.12);
+    --border2: rgba(0,220,130,0.22);
+    --green: #00dc82;
+    --green2: #00ff9d;
+    --cyan: #00d4ff;
+    --amber: #ffaa00;
+    --red: #ff4466;
+    --dim: rgba(0,220,130,0.45);
+    --text: #c8d8e8;
+    --text2: #6a8099;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--head);
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Grid lines background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,220,130,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,220,130,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(6,10,14,0.95);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 20px rgba(0,220,130,0.4);
+  }
+
+  .logo span { color: var(--cyan); }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-left: auto;
+  }
+
+  .pulse {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .main {
+    padding: 28px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+  }
+
+  /* Target bar */
+  .target-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .target-label {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .target-input {
+    flex: 1;
+    background: rgba(0,220,130,0.05);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .target-input:focus { border-color: var(--green); box-shadow: 0 0 12px rgba(0,220,130,0.12); }
+  .target-input::placeholder { color: var(--text2); }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--head);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: rgba(0,220,130,0.1); box-shadow: 0 0 16px rgba(0,220,130,0.2); }
+  .btn:active { transform: scale(0.97); }
+  .btn.running { border-color: var(--amber); color: var(--amber); animation: btnPulse 1s infinite; }
+
+  @keyframes btnPulse {
+    0%,100% { box-shadow: 0 0 0 rgba(255,170,0,0.4); }
+    50% { box-shadow: 0 0 18px rgba(255,170,0,0.4); }
+  }
+
+  /* Mode tabs */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .tab:hover { border-color: var(--cyan); color: var(--cyan); }
+  .tab.active { background: rgba(0,212,255,0.1); border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 10px rgba(0,212,255,0.1); }
+
+  /* Stats row */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--green));
+    opacity: 0.5;
+  }
+
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text2);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--accent, var(--green));
+    text-shadow: 0 0 20px currentColor;
+    line-height: 1;
+    transition: all 0.3s;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+
+  /* Two column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,220,130,0.03);
+  }
+
+  .panel-title {
+    font-size: 11px;
+    color: var(--green);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::before {
+    content: '';
+    width: 5px; height: 5px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--green);
+    flex-shrink: 0;
+  }
+
+  .panel-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: rgba(0,220,130,0.1);
+    color: var(--green);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,220,130,0.2);
+  }
+
+  .panel-body { padding: 14px 18px; }
+
+  /* Log terminal */
+  .log-terminal {
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    height: 280px;
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+
+  .log-terminal::-webkit-scrollbar { width: 4px; }
+  .log-terminal::-webkit-scrollbar-track { background: transparent; }
+  .log-terminal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-time { color: var(--text2); flex-shrink: 0; }
+  .log-tag { flex-shrink: 0; }
+  .log-tag.info { color: var(--cyan); }
+  .log-tag.success { color: var(--green); }
+  .log-tag.warn { color: var(--amber); }
+  .log-tag.error { color: var(--red); }
+  .log-msg { color: var(--text); word-break: break-all; }
+
+  /* Found paths list */
+  .path-list {
+    font-family: var(--mono);
+    font-size: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .path-list::-webkit-scrollbar { width: 3px; }
+  .path-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .path-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,220,130,0.05);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .path-item:hover { background: rgba(0,220,130,0.04); margin: 0 -6px; padding: 6px 6px; border-radius: 4px; }
+
+  .http-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .http-200 { background: rgba(0,220,130,0.12); color: var(--green); border: 1px solid rgba(0,220,130,0.25); }
+  .http-301 { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+  .http-403 { background: rgba(255,170,0,0.1); color: var(--amber); border: 1px solid rgba(255,170,0,0.2); }
+  .http-404 { background: rgba(255,255,255,0.04); color: var(--text2); border: 1px solid rgba(255,255,255,0.07); }
+
+  /* Keywords cloud */
+  .keyword-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .keyword-tag {
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.18);
+    color: var(--cyan);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .keyword-tag:hover { background: rgba(0,212,255,0.15); transform: scale(1.03); }
+
+  /* Subdomain cards */
+  .subdomain-list { display: flex; flex-direction: column; gap: 7px; max-height: 240px; overflow-y: auto; }
+
+  .subdomain-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .subdomain-item:hover { border-color: var(--border2); background: rgba(0,220,130,0.04); }
+
+  .subdomain-live { color: var(--green); font-size: 10px; }
+  .subdomain-predict { color: var(--amber); font-size: 10px; }
+  .subdomain-url { color: var(--text); flex: 1; }
+  .subdomain-code { font-size: 10px; margin-left: auto; }
+
+  /* LLM analysis panel */
+  .llm-box {
+    background: rgba(0,0,0,0.35);
+    border-radius: 6px;
+    padding: 14px;
+    border: 1px solid rgba(255,170,0,0.12);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .llm-box .llm-label {
+    font-size: 10px;
+    color: var(--amber);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: rgba(0,0,0,0.4);
+    border-radius: 3px;
+    height: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(0,220,130,0.5);
+  }
+
+  /* Config section */
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .config-item { display: flex; flex-direction: column; gap: 5px; }
+
+  .config-label {
+    font-size: 10px;
+    color: var(--text2);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .config-input, .config-select {
+    background: rgba(0,220,130,0.04);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .config-input:focus, .config-select:focus { border-color: var(--green); }
+  .config-select option { background: var(--bg2); }
+
+  /* Toggle switch */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0,220,130,0.05);
+  }
+
+  .toggle-name { font-size: 12px; color: var(--text); font-family: var(--mono); }
+
+  .toggle {
+    width: 34px; height: 18px;
+    background: var(--border);
+    border-radius: 9px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: 1px solid var(--border2);
+  }
+
+  .toggle.on { background: rgba(0,220,130,0.25); border-color: rgba(0,220,130,0.5); }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    background: var(--text2);
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+
+  .toggle.on::after { transform: translateX(16px); background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* Command preview */
+  .cmd-preview {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .cmd-preview .cmd-prompt { color: var(--text2); user-select: none; }
+
+  /* Redirect chain */
+  .chain-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 0;
+  }
+
+  .chain-arrow { color: var(--cyan); }
+  .chain-url { color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chain-code { color: var(--amber); }
+
+  /* Typewriter cursor */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); animation: blink 1s infinite; vertical-align: middle; }
+
+  /* Scrollbar global */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,220,130,0.2); border-radius: 2px; }
+
+  /* Responsive */
+  @media(max-width: 1100px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .three-col { grid-template-columns: 1fr 1fr; }
+  }
+  @media(max-width: 750px) {
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    header { padding: 12px 16px; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">THE<span>SEEKER</span></div>
+  <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">v1.0.0 // OSINT RECON FRAMEWORK</div>
+  <div class="header-status">
+    <div class="pulse"></div>
+    SYSTEM ONLINE
+    <span style="margin-left:12px;opacity:0.4">|</span>
+    <span id="clock" style="margin-left:12px"></span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Target input -->
+  <div class="target-bar">
+    <span class="target-label">Target</span>
+    <input class="target-input" id="target-url" type="text" placeholder="https://target.com" value="https://example.com">
+    <div class="mode-tabs" id="mode-tabs">
+      <button class="tab active" data-mode="full">FULL</button>
+      <button class="tab" data-mode="dirs">DIRS</button>
+      <button class="tab" data-mode="subs">SUBS</button>
+      <button class="tab" data-mode="llm">LLM</button>
+    </div>
+    <button class="btn" id="scan-btn" onclick="startScan()">▶ SCAN</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card" style="--accent:var(--green)">
+      <div class="stat-label">Paths Found</div>
+      <div class="stat-value" id="stat-paths">0</div>
+      <div class="stat-sub">200 / 301 / 403</div>
+      <div class="progress-wrap" style="margin-top:10px"><div class="progress-bar" id="prog-enum" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card" style="--accent:var(--cyan)">
+      <div class="stat-label">Subdomains</div>
+      <div class="stat-value" id="stat-subs">0</div>
+      <div class="stat-sub">Predicted by LLM</div>
+      <div class="progress-wrap" style="margin-top:10px"><div class="progress-bar" id="prog-sub" style="width:0%;background:linear-gradient(90deg,var(--cyan),#007bff)"></div></div>
+    </div>
+    <div class="stat-card" style="--accent:var(--amber)">
+      <div class="stat-label">Keywords (CewL)</div>
+      <div class="stat-value" id="stat-keys">0</div>
+      <div class="stat-sub">Scraped from target</div>
+    </div>
+    <div class="stat-card" style="--accent:var(--red)">
+      <div class="stat-label">Redirects</div>
+      <div class="stat-value" id="stat-redir">0</div>
+      <div class="stat-sub">Chains tracked</div>
+    </div>
+  </div>
+
+  <!-- Main panels row 1 -->
+  <div class="three-col">
+
+    <!-- Log terminal -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Live Terminal</div>
+        <button onclick="clearLog()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-family:var(--mono);font-size:10px">CLR</button>
+      </div>
+      <div class="panel-body" style="padding:10px">
+        <div class="log-terminal" id="log-terminal"></div>
+      </div>
+    </div>
+
+    <!-- Found paths -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Discovered Paths</div>
+        <span class="panel-badge" id="paths-count">0</span>
+      </div>
+      <div class="panel-body" style="padding:10px 14px">
+        <div class="path-list" id="path-list"></div>
+      </div>
+    </div>
+
+    <!-- Redirects -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Redirect Chains</div>
+        <span class="panel-badge" id="redir-count">0</span>
+      </div>
+      <div class="panel-body">
+        <div id="redirect-list" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 2 -->
+  <div class="two-col">
+
+    <!-- CewL keywords + LLM -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">CewL Keywords</div>
+          <span class="panel-badge" id="kw-count">0</span>
+        </div>
+        <div class="panel-body">
+          <div class="keyword-cloud" id="keyword-cloud"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" style="color:var(--amber)">◈ LLM Intelligence</div>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px">
+          <div class="llm-box">
+            <div class="llm-label">Site Category</div>
+            <div id="llm-category" style="color:var(--green);font-family:var(--mono);font-size:14px">—</div>
+          </div>
+          <div class="llm-box">
+            <div class="llm-label">Analysis</div>
+            <div id="llm-analysis" style="font-size:12px;color:var(--text)">Awaiting scan...</div>
+          </div>
+          <div class="llm-box">
+            <div class="llm-label">Confidence</div>
+            <div id="llm-confidence" style="color:var(--amber);font-family:var(--mono);font-size:13px">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subdomains -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Subdomain Predictions</div>
+        <span class="panel-badge" id="sub-badge">0</span>
+      </div>
+      <div class="panel-body">
+        <div class="subdomain-list" id="subdomain-list"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="llm-box">
+            <div class="llm-label">LLM Reasoning</div>
+            <div id="llm-reasoning" style="font-size:11px;color:var(--text);font-family:var(--mono);line-height:1.6">Awaiting analysis...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Config + Command -->
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Scan Configuration</div>
+      </div>
+      <div class="panel-body">
+        <div class="config-grid" style="margin-bottom:16px">
+          <div class="config-item">
+            <div class="config-label">Threads</div>
+            <input class="config-input" type="number" id="cfg-threads" value="10" min="1" max="50" onchange="updateCmd()">
+          </div>
+          <div class="config-item">
+            <div class="config-label">Depth</div>
+            <input class="config-input" type="number" id="cfg-depth" value="2" min="1" max="5" onchange="updateCmd()">
+          </div>
+          <div class="config-item">
+            <div class="config-label">Timeout (s)</div>
+            <input class="config-input" type="number" id="cfg-timeout" value="10" min="3" max="60" onchange="updateCmd()">
+          </div>
+          <div class="config-item">
+            <div class="config-label">Extensions</div>
+            <input class="config-input" type="text" id="cfg-ext" value="php,html,js,txt" onchange="updateCmd()">
+          </div>
+          <div class="config-item">
+            <div class="config-label">Mode</div>
+            <select class="config-select" id="cfg-mode" onchange="updateCmd()">
+              <option value="full">full</option>
+              <option value="dirs">dirs</option>
+              <option value="subs">subs</option>
+              <option value="llm">llm</option>
+            </select>
+          </div>
+          <div class="config-item">
+            <div class="config-label">Wordlist</div>
+            <input class="config-input" type="text" id="cfg-wl" value="/usr/share/wordlists/dirb/common.txt" onchange="updateCmd()">
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div class="toggle-row">
+            <span class="toggle-name">CewL Keyword Scraping</span>
+            <div class="toggle on" id="tog-cewl" onclick="this.classList.toggle('on');updateCmd()"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-name">LLM Subdomain Prediction</span>
+            <div class="toggle on" id="tog-llm" onclick="this.classList.toggle('on');updateCmd()"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-name">Follow Redirects</span>
+            <div class="toggle on" id="tog-redir" onclick="this.classList.toggle('on');updateCmd()"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Generated Command</div>
+        <button onclick="copyCmd()" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:0.1em">COPY</button>
+      </div>
+      <div class="panel-body">
+        <div class="cmd-preview" id="cmd-preview">
+          <span class="cmd-prompt">$ </span><span id="cmd-text"></span><span class="cursor"></span>
+        </div>
+        <div style="margin-top:16px;font-size:11px;color:var(--text2);font-family:var(--mono);line-height:1.8">
+          <div>1. Set API key: <span style="color:var(--green)">export ANTHROPIC_API_KEY='sk-ant-...'</span></div>
+          <div>2. Make executable: <span style="color:var(--green)">chmod +x theseeker.sh</span></div>
+          <div>3. Install deps: <span style="color:var(--green)">sudo ./install.sh</span></div>
+          <div>4. Run the command above</div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <div style="font-size:10px;color:var(--text2);font-family:var(--mono);padding:4px 10px;background:rgba(0,220,130,0.04);border:1px solid var(--border);border-radius:4px">Kali Linux ✓</div>
+          <div style="font-size:10px;color:var(--text2);font-family:var(--mono);padding:4px 10px;background:rgba(0,220,130,0.04);border:1px solid var(--border);border-radius:4px">Parrot OS ✓</div>
+          <div style="font-size:10px;color:var(--text2);font-family:var(--mono);padding:4px 10px;background:rgba(0,220,130,0.04);border:1px solid var(--border);border-radius:4px">Ubuntu ✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Clock ───────────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8) + ' UTC+0';
+}
+tick(); setInterval(tick, 1000);
+
+// ─── Mode tabs ──────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('cfg-mode').value = tab.dataset.mode;
+    updateCmd();
+  });
+});
+
+// ─── Logging ─────────────────────────────────────────────
+const logEl = document.getElementById('log-terminal');
+function addLog(tag, tagClass, msg) {
+  const now = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${now}</span><span class="log-tag ${tagClass}">[${tag}]</span><span class="log-msg">${msg}</span>`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function clearLog() { logEl.innerHTML = ''; }
+
+// ─── Path list ────────────────────────────────────────────
+const pathListEl = document.getElementById('path-list');
+let pathCount = 0;
+function addPath(code, url) {
+  pathCount++;
+  document.getElementById('stat-paths').textContent = pathCount;
+  document.getElementById('paths-count').textContent = pathCount;
+  const codeClass = code === 200 ? 'http-200' : code === 301 ? 'http-301' : code === 403 ? 'http-403' : 'http-404';
+  const item = document.createElement('div');
+  item.className = 'path-item';
+  item.innerHTML = `<span class="http-badge ${codeClass}">${code}</span><span style="color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</span>`;
+  pathListEl.appendChild(item);
+}
+
+// ─── Redirect list ────────────────────────────────────────
+const redirListEl = document.getElementById('redirect-list');
+let redirCount = 0;
+function addRedirect(from, to, code) {
+  redirCount++;
+  document.getElementById('stat-redir').textContent = redirCount;
+  document.getElementById('redir-count').textContent = redirCount;
+  const item = document.createElement('div');
+  item.className = 'chain-item';
+  item.innerHTML = `<span class="chain-code">${code}</span><span class="chain-url">${from}</span><span class="chain-arrow">→</span><span class="chain-url" style="color:var(--cyan)">${to}</span>`;
+  redirListEl.appendChild(item);
+}
+
+// ─── Keywords ─────────────────────────────────────────────
+const kwCloud = document.getElementById('keyword-cloud');
+let kwCount = 0;
+function addKeyword(word) {
+  kwCount++;
+  document.getElementById('stat-keys').textContent = kwCount;
+  document.getElementById('kw-count').textContent = kwCount;
+  const tag = document.createElement('div');
+  tag.className = 'keyword-tag';
+  tag.textContent = word;
+  kwCloud.appendChild(tag);
+}
+
+// ─── Subdomains ───────────────────────────────────────────
+const subListEl = document.getElementById('subdomain-list');
+let subCount = 0;
+function addSubdomain(fqdn, live, code) {
+  subCount++;
+  document.getElementById('stat-subs').textContent = subCount;
+  document.getElementById('sub-badge').textContent = subCount;
+  document.getElementById('prog-sub').style.width = Math.min(subCount * 7, 100) + '%';
+  const item = document.createElement('div');
+  item.className = 'subdomain-item';
+  const statusIcon = live ? `<span class="subdomain-live">● LIVE</span>` : `<span class="subdomain-predict">◌ PRED</span>`;
+  const codeSpan = code ? `<span class="subdomain-code http-badge ${code===200?'http-200':'http-301'}">${code}</span>` : '';
+  item.innerHTML = `${statusIcon}<span class="subdomain-url">${fqdn}</span>${codeSpan}`;
+  subListEl.appendChild(item);
+}
+
+// ─── Demo simulation ──────────────────────────────────────
+const demoData = {
+  paths: [
+    [200, '/admin'], [200, '/login'], [403, '/.htaccess'],
+    [301, '/wp-admin'], [200, '/api/v1'], [403, '/config.php'],
+    [200, '/robots.txt'], [200, '/sitemap.xml'], [301, '/dashboard'],
+    [200, '/backup.zip'], [403, '/.env'], [200, '/api/docs'],
+    [200, '/upload'], [403, '/private']
+  ],
+  redirects: [
+    ['http://example.com', 'https://example.com', 301],
+    ['/wp-admin', '/wp-login.php?redirect_to=/wp-admin', 302],
+    ['/dashboard', '/login?next=dashboard', 302]
+  ],
+  keywords: ['admin','security','portal','api','dashboard','login','logout','backup',
+             'config','upload','download','profile','settings','register','auth',
+             'password','token','session','user','manage'],
+  subdomains: [
+    ['api.example.com', true, 200],
+    ['admin.example.com', true, 200],
+    ['staging.example.com', true, 302],
+    ['dev.example.com', false, null],
+    ['mail.example.com', false, null],
+    ['vpn.example.com', false, null],
+    ['cdn.example.com', true, 200],
+    ['static.example.com', false, null],
+    ['auth.example.com', false, null],
+  ],
+  llm: {
+    category: 'Corporate / SaaS Platform',
+    analysis: 'Based on keywords (admin, api, dashboard, auth, token) and site structure, this appears to be a SaaS web application with REST API and admin interface. Typical attack surface includes OAuth endpoints, API versioning leaks, and admin panel exposure.',
+    confidence: 'HIGH',
+    reasoning: 'Domain pattern + /api/v1 endpoint + auth keywords strongly suggest multi-tenant SaaS. Predicted subdomains follow standard cloud infrastructure patterns (api.*, cdn.*, auth.*).'
+  }
+};
+
+let scanning = false;
+let simTimeout = null;
+
+function startScan() {
+  if (scanning) return;
+  scanning = true;
+  clearLog();
+  pathListEl.innerHTML = ''; redirListEl.innerHTML = ''; kwCloud.innerHTML = ''; subListEl.innerHTML = '';
+  pathCount = 0; redirCount = 0; kwCount = 0; subCount = 0;
+  ['stat-paths','stat-subs','stat-keys','stat-redir'].forEach(id => document.getElementById(id).textContent = '0');
+  ['paths-count','redir-count','kw-count','sub-badge'].forEach(id => document.getElementById(id).textContent = '0');
+  document.getElementById('prog-enum').style.width = '0%';
+  document.getElementById('prog-sub').style.width = '0%';
+  document.getElementById('llm-category').textContent = '—';
+  document.getElementById('llm-analysis').textContent = 'Awaiting scan...';
+  document.getElementById('llm-confidence').textContent = '—';
+  document.getElementById('llm-reasoning').textContent = 'Awaiting analysis...';
+
+  const btn = document.getElementById('scan-btn');
+  btn.textContent = '⬛ STOP';
+  btn.className = 'btn running';
+  btn.onclick = stopScan;
+
+  const target = document.getElementById('target-url').value || 'https://example.com';
+
+  const steps = [];
+  steps.push([200, () => addLog('INFO','info', `Initializing TheSeeker v1.0.0`)]);
+  steps.push([400, () => addLog('INFO','info', `Target: ${target}`)]);
+  steps.push([600, () => addLog('INFO','info', `Mode: ${document.getElementById('cfg-mode').value} | Threads: ${document.getElementById('cfg-threads').value} | Depth: ${document.getElementById('cfg-depth').value}`)]);
+  steps.push([1000, () => addLog('INFO','info', 'Starting fingerprinting...')]);
+  steps.push([1600, () => { addLog('FOUND','success', 'robots.txt found → disallowed paths extracted'); addPath(200, '/robots.txt'); }]);
+  steps.push([2000, () => { addLog('FOUND','success', 'sitemap.xml found → 14 URLs extracted'); addPath(200, '/sitemap.xml'); }]);
+  steps.push([2500, () => addLog('INFO','info', 'HTML analysis → extracting links and JS paths...')]);
+  steps.push([3000, () => addLog('INFO','info', 'Running CewL (depth 2)...')]);
+
+  demoData.keywords.forEach((kw, i) => {
+    steps.push([3200 + i * 100, () => addKeyword(kw)]);
+  });
+
+  steps.push([5500, () => addLog('FOUND','success', `CewL complete: ${demoData.keywords.length} keywords`)]);
+  steps.push([5800, () => addLog('INFO','info', 'Starting directory enumeration...')]);
+
+  demoData.paths.forEach(([code, url], i) => {
+    steps.push([6000 + i * 350, () => {
+      addPath(code, url);
+      const pct = Math.min(Math.round((i+1)/demoData.paths.length*100), 100);
+      document.getElementById('prog-enum').style.width = pct + '%';
+      const tag = code===200?'success':code===403?'warn':'info';
+      const tagLabel = code===200?'FOUND':code===403?'FORBID':'REDIR';
+      addLog(tagLabel, tag, `[${code}] ${url}`);
+    }]);
+  });
+
+  demoData.redirects.forEach(([from, to, code], i) => {
+    steps.push([6200 + i * 600, () => { addRedirect(from, to, code); }]);
+  });
+
+  steps.push([11500, () => addLog('INFO','info', 'Querying Claude AI for subdomain prediction...')]);
+  steps.push([13000, () => {
+    addLog('LLM','warn', 'Received LLM response (confidence: HIGH)');
+    document.getElementById('llm-category').textContent = demoData.llm.category;
+    document.getElementById('llm-analysis').textContent = demoData.llm.analysis;
+    document.getElementById('llm-confidence').textContent = demoData.llm.confidence;
+    document.getElementById('llm-reasoning').textContent = demoData.llm.reasoning;
+  }]);
+
+  demoData.subdomains.forEach(([fqdn, live, code], i) => {
+    steps.push([13500 + i * 400, () => {
+      addSubdomain(fqdn, live, code);
+      if (live) addLog('LIVE','success', `Subdomain active: ${fqdn} [${code}]`);
+      else addLog('PRED','info', `Subdomain predicted: ${fqdn}`);
+    }]);
+  });
+
+  steps.push([18000, () => {
+    addLog('DONE','success', '════ Scan complete ════');
+    addLog('INFO','info', 'Report saved → ./theseeker_output/report.html');
+    scanning = false;
+    btn.textContent = '▶ SCAN';
+    btn.className = 'btn';
+    btn.onclick = startScan;
+  }]);
+
+  // Schedule all steps
+  steps.forEach(([delay, fn]) => {
+    const t = setTimeout(fn, delay);
+    // store for cancellation
+    window._scanTimers = window._scanTimers || [];
+    window._scanTimers.push(t);
+  });
+}
+
+function stopScan() {
+  (window._scanTimers || []).forEach(clearTimeout);
+  scanning = false;
+  addLog('STOP','warn', 'Scan interrupted by user');
+  const btn = document.getElementById('scan-btn');
+  btn.textContent = '▶ SCAN';
+  btn.className = 'btn';
+  btn.onclick = startScan;
+}
+
+// ─── Command builder ──────────────────────────────────────
+function updateCmd() {
+  const url   = document.getElementById('target-url').value || 'https://target.com';
+  const mode  = document.getElementById('cfg-mode').value;
+  const t     = document.getElementById('cfg-threads').value;
+  const d     = document.getElementById('cfg-depth').value;
+  const ext   = document.getElementById('cfg-ext').value;
+  const wl    = document.getElementById('cfg-wl').value;
+  const to    = document.getElementById('cfg-timeout').value;
+  const cewl  = document.getElementById('tog-cewl').classList.contains('on');
+  const llm   = document.getElementById('tog-llm').classList.contains('on');
+  const redir = document.getElementById('tog-redir').classList.contains('on');
+
+  let cmd = `./theseeker.sh -u ${url} -m ${mode} -t ${t} -d ${d} -e ${ext} --timeout ${to}`;
+  if (wl !== '/usr/share/wordlists/dirb/common.txt') cmd += ` -w ${wl}`;
+  if (!cewl) cmd += ' --no-cewl';
+  if (!llm)  cmd += ' --no-llm';
+  if (!redir) cmd += ' --no-redirects';
+  cmd += ' -o ./output';
+
+  document.getElementById('cmd-text').textContent = cmd;
+
+  // sync mode tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+}
+
+function copyCmd() {
+  const text = './'+document.getElementById('cmd-text').textContent;
+  navigator.clipboard.writeText(text).catch(()=>{});
+}
+
+// ─── Init ─────────────────────────────────────────────────
+updateCmd();
+document.getElementById('target-url').addEventListener('input', updateCmd);
+
+// Boot log
+setTimeout(() => addLog('BOOT','success', 'TheSeeker v1.0.0 ready'), 300);
+setTimeout(() => addLog('INFO','info', 'Configure target URL and press SCAN'), 700);
+</script>
+</body>
+</html>
