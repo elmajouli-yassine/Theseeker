@@ -39,7 +39,7 @@
 ## Installation
 
 ```bash
-git clone [https://github.com/you/theseeker](https://github.com/you/theseeker)
+git clone https://github.com/elmajouli-yassine/Theseeker.git
 cd theseeker
 chmod +x install.sh theseeker.sh
 sudo ./install.sh
