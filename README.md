@@ -97,7 +97,7 @@ The model acts as a "context-aware" predictor that bridges the gap between raw s
 - Offline Efficiency: Because it uses a pre-trained .pkl file, the prediction happens in milliseconds and works entirely offline once the keywords are gathered.
 
 ### **Why Random Forest?**
-For a security tool like yours, a Random Forest is often better than a deep learning model because it is lightweight, less prone to "hallucinating" non-existent patterns, and can be easily re-trained on new CTF or real-world datasets using your train_model.py script.
+A Random Forest is often better than a deep learning model because it is lightweight, less prone to "hallucinating" non-existent patterns, and can be easily re-trained on new CTF or real-world datasets using your train_model.py script.
 
 ---
 
