@@ -54,16 +54,16 @@ python3 train_model.py
 
 ```bash
 # Full scan (Recon + ML + Enumeration)
-./theseeker.sh -u [https://target.com](https://target.com) -m full
+./theseeker.sh -u https://target.com -m full
 
 # Directory enumeration only
-./theseeker.sh -u [https://target.com](https://target.com) -m dirs
+./theseeker.sh -u https://target.com -m dirs
 
 # ML Intelligence mode (Keyword scraping + Prediction only)
-./theseeker.sh -u [https://target.com](https://target.com) -m ml
+./theseeker.sh -u https://target.com -m ml
 
 # Custom options
-./theseeker.sh -u [https://target.com](https://target.com) \
+./theseeker.sh -u https://target.com \
   -m full \
   -t 25 \
   -o custom_results \
@@ -88,15 +88,15 @@ python3 train_model.py
 
 The model acts as a "context-aware" predictor that bridges the gap between raw scraping and active brute-forcing:
 
-Feature Extraction: It takes the top 50 keywords discovered by CewL and processes them as input features.
+- Feature Extraction: It takes the top 50 keywords discovered by CewL and processes them as input features.
 
-Pattern Recognition: The Random Forest algorithm—an ensemble of decision trees—analyzes these keywords to classify the "type" of website (e.g., Medical, Corporate, Government, or Development).
+- Pattern Recognition: The Random Forest algorithm—an ensemble of decision trees—analyzes these keywords to classify the "type" of website (e.g., Medical, Corporate, Government, or Development).
 
-Path Intelligence: Based on the identified category, the model predicts hidden directories that are statistically likely to exist on that specific type of site (e.g., predicting /wp-json/ for a blog or /api/v1/ for a modern web app).
+- Path Intelligence: Based on the identified category, the model predicts hidden directories that are statistically likely to exist on that specific type of site (e.g., predicting /wp-json/ for a blog or /api/v1/ for a modern web app).
 
-Offline Efficiency: Because it uses a pre-trained .pkl file, the prediction happens in milliseconds and works entirely offline once the keywords are gathered.
+- Offline Efficiency: Because it uses a pre-trained .pkl file, the prediction happens in milliseconds and works entirely offline once the keywords are gathered.
 
-Why Random Forest?
+###**Why Random Forest?**
 For a security tool like yours, a Random Forest is often better than a deep learning model because it is lightweight, less prone to "hallucinating" non-existent patterns, and can be easily re-trained on new CTF or real-world datasets using your train_model.py script.
 
 ---
