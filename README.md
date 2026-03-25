@@ -9,7 +9,7 @@
      |_|  |_| |_|\___|_____/ \___|\___|_|\_\___|_|
 ```
 
-> Advanced Bash-based OSINT reconnaissance framework with CewL integration and Claude AI-powered subdomain prediction.
+> Advanced Bash-based OSINT reconnaissance framework with CewL integration and ML prediction.
 
 ---
 
