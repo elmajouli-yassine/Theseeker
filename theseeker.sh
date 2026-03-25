@@ -2,7 +2,7 @@
 # ============================================================
 #  TheSeeker — Advanced OSINT Reconnaissance Tool
 #  Version: 1.0.0
-#  Author:  Yassine / TheSeeker Project
+#  Author:  EL majouli Yassine / TheSeeker Project
 # ============================================================
 
 set -euo pipefail
@@ -24,9 +24,8 @@ USE_LLM=true
 TIMEOUT=10
 USER_AGENT="Mozilla/5.0 (TheSeeker/1.0 OSINT)"
 EXTENSIONS="php,html,js,txt,bak,json,xml"
-API_KEY="${ANTHROPIC_API_KEY:-}"
 LOG_FILE=""
-MODE="full"   # full | dirs | subs | llm
+MODE="full"   # full | dirs | ml
 
 # ─── Banner ─────────────────────────────────────────────────
 banner() {
@@ -39,7 +38,7 @@ cat << 'EOF'
      |_|  |_| |_|\___|_____/ \___|\___|_|\_\___|_|
 
         [ Advanced OSINT Reconnaissance Framework ]
-              Powered by CewL + Claude AI
+                Powered by CewL + ML
 EOF
 echo -e "${DIM}  ─────────────────────────────────────────────────${NC}"
 }
@@ -67,15 +66,13 @@ usage() {
   echo "  -o, --output <dir>       Output directory (default: ./theseeker_output)"
   echo "  -m, --mode <mode>        Mode: full|dirs|subs|llm (default: full)"
   echo "  --no-cewl                Skip CewL keyword scraping"
-  echo "  --no-llm                 Skip LLM subdomain prediction"
   echo "  --no-redirects           Don't follow HTTP redirects"
   echo "  --timeout <sec>          Request timeout in seconds (default: 10)"
-  echo "  --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)"
   echo "  -h, --help               Show this help"
   echo ""
   echo -e "${BOLD}Examples:${NC}"
   echo "  $0 -u https://target.com"
-  echo "  $0 -u https://target.com -m subs --no-cewl"
+  echo "  $0 -u https://target.com -m dirs --no-cewl"
   echo "  $0 -u https://target.com -d 3 -t 20 -e php,asp,aspx"
   exit 0
 }
@@ -108,10 +105,8 @@ parse_args() {
       -o|--output)    OUTPUT_DIR="$2"; shift 2 ;;
       -m|--mode)      MODE="$2"; shift 2 ;;
       --no-cewl)      USE_CEWL=false; shift ;;
-      --no-llm)       USE_LLM=false; shift ;;
       --no-redirects) FOLLOW_REDIRECTS=false; shift ;;
       --timeout)      TIMEOUT="$2"; shift 2 ;;
-      --api-key)      API_KEY="$2"; shift 2 ;;
       -h|--help)      usage ;;
       *)              error "Unknown option: $1"; usage ;;
     esac
@@ -523,14 +518,18 @@ main() {
     full)
       fingerprint_target
       extract_links
-      run_cewl
-      run_ml_prediction
+      if [ "$USE_CEWL" = true ]; then
+          run_cewl
+          run_ml_prediction
+      fi
       enumerate_dirs
       ;;
     dirs)
       fingerprint_target
       extract_links
-      run_cewl
+      if [ "$USE_CEWL" = true ]; then
+          run_cewl
+      fi
       enumerate_dirs
       ;;
     ml)
