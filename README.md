@@ -127,6 +127,12 @@ Unauthorized use may violate laws including CFAA, Computer Misuse Act, and local
 
 ---
 
+<p align="center">
+  <img src="the_seeker.png" alt="Phishing Attack Illustration" width="600">
+</p>
+
+---
+
 ## Author
 
 El majouli Yassine
